@@ -1,0 +1,562 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InviteStatusEnum {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum TimeFormatEnum {
+  TWELVE_HOUR
+  TWENTY_FOUR_HOUR
+}
+
+enum NotificationTypeEnum {
+  EMAIL
+}
+
+model user {
+  id                       String                    @id @default(uuid())
+  email                    String                    @unique
+  first_name               String?
+  last_name                String?
+  phone_number             String?
+  full_address             String?
+  state                    String?
+  city                     String?
+  post_code                String?
+  avatar                   String?
+  salt                     String?
+  password                 String?
+  companyName              String?                   @map("company_name")
+  skills                   String[]                @default([])
+  expertise                String[]                  @default([])
+  timezone                 String?                    @default("UTC")
+  language                 String?                    @default("en")
+  time_format              TimeFormatEnum ?           @default(TWENTY_FOUR_HOUR)
+  date_format              String?                    @default("yyyy-MM-dd")
+  team_id                  String?
+  user_team                user_team?                @relation(fields: [team_id], references: [id])
+  account                  account?
+  notification_type        NotificationTypeEnum      @default(EMAIL)
+  notification_permissions notification_permissions?
+  workspaces               workspace[]
+  goals_as_member          goal[]                    @relation("MemberOf")
+  goals_as_owner           goal[]                    @relation("OwnerOf")
+  projects_as_owner        project[]                 @relation("MemberOfProject")
+  projects_as_member       project[]                 @relation("OwnerOfProject")
+  projects_as_stakeholders project[]                 @relation("StakeholdersOfProject")
+  okrs_as_member           okr[]                     @relation("MemberOfOkr")
+  okrs_as_owner            okr[]                     @relation("OwnerOfOkr")
+  objective_as_member      objective[]               @relation("MemberOfObjective")
+  objective_as_owner       objective[]               @relation("OwnerOfObjective")
+  key_results_as_member    key_results[]             @relation("MemberOfKeyresult")
+  key_results_as_owner     key_results[]             @relation("OwnerOfKeyresult")
+  roadmap_as_member        roadmap[]                 @relation("MemberOfRoadmap")
+  inviteStatus             InviteStatusEnum?          @default(PENDING) @map("invite_status")
+  createdAt                DateTime                  @default(now()) @map("created_at")
+  updatedAt                DateTime                  @default(now()) @map("updated_at")
+  goal_comments            goal_comments[]
+  theme_group              theme_group[]
+  objective_comments       objective_comments[]
+  key_result_comments      key_result_comments[]
+  milestones               milestones[]
+  user_story               user_story[]
+  task                     task[]
+  milestones_comments      milestones_comments[]
+}
+
+model notification_permissions {
+  id                           String   @id @default(uuid())
+  user                         user     @relation(fields: [userId], references: [id])
+  userId                       String   @unique @map("user_id")
+  on_assign_item               Boolean  @default(false)
+  on_mentions                  Boolean  @default(false)
+  on_update_on_my_item         Boolean  @default(false)
+  on_update_on_subscribed_item Boolean  @default(false)
+  on_signup_invited_user       Boolean  @default(false)
+  on_not_signup_invited_user   Boolean  @default(false)
+  on_signup_from_my_domain     Boolean  @default(false)
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @default(now()) @map("updated_at")
+}
+
+model user_team {
+  id   String @id @default(uuid())
+  team user[] @relation
+}
+
+model email_verification_otp {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  otp       Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+}
+
+enum RoleEnum {
+  BUSINESS_OWNER
+  TEAM_LEADER
+  TEAM_MEMBER
+  FREELANCE
+  DIRECTOR
+  C_LEVEL
+  MANAGER
+  VP
+}
+
+enum PurposeEnum {
+  WORK
+  PERSONAL
+  SCHOOL
+  OTHER
+}
+
+enum PreferenceEnum {
+  PROJECT_MANAGEMENT
+  KANBAN
+  OKR_OBJECTIVES
+  OKR_KEY_RESULTS
+  OTHER
+}
+
+model account {
+  id           String         @id @default(uuid())
+  user         user           @relation(fields: [userId], references: [id])
+  userId       String         @unique @map("user_id")
+  role         RoleEnum       @default(DIRECTOR)
+  purpose      PurposeEnum    @default(WORK)
+  teamCount    String         @map("team_count")
+  companyCount String         @map("company_count")
+  sector       String
+  preference   PreferenceEnum
+  referral     String
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @default(now()) @map("updated_at")
+}
+
+enum WorkspacePreferenceEnum {
+  OKRS
+  GOALS
+  BOTH
+}
+
+model workspace {
+  id         String                  @id @default(uuid())
+  name       String
+  preference WorkspacePreferenceEnum @default(BOTH)
+  members    user[]
+  goals      goal[]
+  okrs       okr[]
+  roadmap    roadmap[]
+  categories category[]
+  createdAt  DateTime                @default(now()) @map("created_at")
+  updatedAt  DateTime                @default(now()) @map("updated_at")
+  personas   personas[]
+}
+
+enum StatusEnum {
+  NOT_STARTED
+  DONE
+  STUCK
+  IN_PROGRESS
+}
+
+enum PriorityEnum {
+  URGENT
+  LOW
+  HIGH
+  NORMAL
+}
+
+model goal {
+  id             String             @id @default(uuid())
+  name           String
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @default(now()) @map("updated_at")
+  workspace      workspace?         @relation(fields: [workspaceId], references: [id])
+  workspaceId    String?            @map("workspace_id")
+  description    String
+  members        user[]             @relation("MemberOf")
+  owners         user[]             @relation("OwnerOf")
+  member_id      String[]
+  owner_id       String[]
+  theme_group    theme_group        @relation(fields: [theme_group_id], references: [id])
+  theme_group_id String
+  start_date     DateTime
+  end_date       DateTime
+  estimated_time Int
+  status         StatusEnum
+  priority       PriorityEnum
+  progress       Int
+  tags           String[]
+  projects       project[]
+  comments       goal_comments[]
+  attachments    goal_attachments[]
+}
+
+model goal_attachments {
+  id        String   @id @default(uuid())
+  url       String
+  goal      goal     @relation(fields: [goalId], references: [id])
+  goalId    String   @map("goal_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+}
+
+model roadmap {
+  id          String                @id @default(uuid())
+  name        String
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @default(now()) @map("updated_at")
+  workspace   workspace?            @relation(fields: [workspaceId], references: [id])
+  workspaceId String?               @map("workspace_id")
+  description String
+  members     user[]                @relation("MemberOfRoadmap")
+  projects    project[]
+  attachments roadmap_attachments[]
+}
+
+model roadmap_attachments {
+  id         String   @id @default(uuid())
+  url        String
+  roadmap    roadmap? @relation(fields: [roadmap_id], references: [id])
+  roadmap_id String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+}
+
+enum ProjectCategoryEnum {
+  BACKEND
+  FRONTEND
+}
+
+model project {
+  id           String              @id @default(uuid())
+  name         String
+  members      user[]              @relation("MemberOfProject")
+  owners       user[]              @relation("OwnerOfProject")
+  stakeholders user[]              @relation("StakeholdersOfProject")
+  goals        goal[]
+  roadmap      roadmap?            @relation(fields: [roadmap_id], references: [id])
+  roadmap_id   String
+  key_results  key_results[]
+  launch_date  DateTime
+  start_date   DateTime
+  end_date     DateTime
+  status       StatusEnum
+  priority     PriorityEnum
+  progress     Int
+  description  String
+  category     ProjectCategoryEnum
+  milestones   milestones[]
+  user_stories user_story[]
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @default(now()) @map("updated_at")
+  task         task[]
+  sprint       sprint[]
+}
+
+model sprint {
+  id              String       @id @default(uuid())
+  name            String
+  project         project?     @relation(fields: [project_id], references: [id])
+  project_id      String
+  duration        String
+  goal            String
+  goal_short_line String
+  start_date      DateTime
+  estimated_hours Int
+  end_date        DateTime
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @default(now()) @map("updated_at")
+  user_story      user_story[]
+}
+
+model milestones {
+  id                     String                   @id @default(uuid())
+  name                   String
+  owner                  user?                    @relation(fields: [owner_id], references: [id])
+  owner_id               String
+  project                project?                 @relation(fields: [project_id], references: [id])
+  project_id             String
+  user_story             user_story?              @relation(fields: [user_story_id], references: [id])
+  user_story_id          String
+  status                 StatusEnum
+  priority               PriorityEnum
+  description            String
+  start_date             DateTime
+  estimated_hours        Int
+  end_date               DateTime
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @default(now()) @map("updated_at")
+  task                   task[]
+  milestones_comments    milestones_comments[]
+  milestones_attachments milestones_attachments[]
+}
+
+model milestones_comments {
+  id            String      @id @default(uuid())
+  comment       String
+  user          user?       @relation(fields: [user_id], references: [id])
+  user_id       String
+  milestones    milestones? @relation(fields: [milestones_id], references: [id])
+  milestones_id String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @map("updated_at")
+}
+
+model milestones_attachments {
+  id            String      @id @default(uuid())
+  url           String
+  milestones    milestones? @relation(fields: [milestones_id], references: [id])
+  milestones_id String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @map("updated_at")
+}
+
+model user_story {
+  id              String       @id @default(uuid())
+  name            String
+  owner           user?        @relation(fields: [owner_id], references: [id])
+  owner_id        String
+  project         project?     @relation(fields: [project_id], references: [id])
+  project_id      String
+  sprint          sprint?      @relation(fields: [sprint_id], references: [id])
+  sprint_id       String
+  status          StatusEnum
+  priority        PriorityEnum
+  personas        personas?    @relation(fields: [persona_id], references: [id])
+  persona_id      String
+  description     String
+  start_date      DateTime
+  estimated_hours Int
+  end_date        DateTime
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @default(now()) @map("updated_at")
+  milestones      milestones[]
+}
+
+enum TaskcategoryEnum {
+  TASK
+  BUG
+}
+
+model task {
+  id            String           @id @default(uuid())
+  name          String
+  owner         user?            @relation(fields: [owner_id], references: [id])
+  owner_id      String
+  milestones    milestones?      @relation(fields: [milestones_id], references: [id])
+  milestones_id String
+  project       project?         @relation(fields: [project_id], references: [id])
+  project_id    String
+  status        StatusEnum
+  priority      PriorityEnum
+  progress      Int
+  alert         Boolean
+  category      TaskcategoryEnum
+  description   String
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @default(now()) @map("updated_at")
+}
+
+model goal_comments {
+  id        String   @id @default(uuid())
+  comment   String
+  user      user?    @relation(fields: [user_id], references: [id])
+  user_id   String
+  goal      goal?    @relation(fields: [goalId], references: [id])
+  goalId    String?  @map("goal_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+}
+
+model theme_group {
+  id        String               @id @default(uuid())
+  name      String
+  createdAt DateTime             @default(now()) @map("created_at")
+  updatedAt DateTime             @default(now()) @map("updated_at")
+  theme     theme                @relation(fields: [theme_id], references: [id])
+  theme_id  String
+  owner     user                 @relation(fields: [userId], references: [id])
+  category  ProjectCategoryEnum?
+  goal      goal[]
+  userId    String
+  objective objective[]
+}
+
+model theme {
+  id          String        @id @default(uuid())
+  name        String
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @default(now()) @map("updated_at")
+  theme_group theme_group[]
+}
+
+model lan {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+  color     String
+}
+
+model okr {
+  id          String     @id @default(uuid())
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @default(now()) @map("updated_at")
+  workspace   workspace? @relation(fields: [workspaceId], references: [id])
+  workspaceId String?    @map("workspace_id")
+  description String
+  members     user[]     @relation("MemberOfOkr")
+  owners      user[]     @relation("OwnerOfOkr")
+}
+
+enum ExecutionTypeEnum {
+  KANBAN
+}
+
+model category {
+  id            String                 @id @default(uuid())
+  name          String
+  description   String
+  executionType ExecutionTypeEnum      @default(KANBAN) @map("execution_type")
+  attachments   category_attachments[]
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @default(now()) @map("updated_at")
+  workspace     workspace?             @relation(fields: [workspaceId], references: [id])
+  workspaceId   String?                @map("workspace_id")
+}
+
+model category_attachments {
+  id         String   @id @default(uuid())
+  url        String
+  category   category @relation(fields: [categoryId], references: [id])
+  categoryId String   @unique @map("category_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @map("updated_at")
+}
+
+model personas {
+  id          String       @id @default(uuid())
+  name        String
+  jobTitle    String       @map("job_title")
+  aspirations String
+  about       Json
+  goals       Json
+  frustation  Json
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @default(now()) @map("updated_at")
+  workspace   workspace?   @relation(fields: [workspaceId], references: [id])
+  workspaceId String?      @map("workspace_id")
+  user_story  user_story[]
+}
+
+model objective_group {
+  id         String      @id @default(uuid())
+  name       String
+  objectives objective[]
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @default(now()) @map("updated_at")
+}
+
+model objective {
+  id                 String                  @id @default(uuid())
+  name               String
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @default(now()) @map("updated_at")
+  objective_group    objective_group?        @relation(fields: [objective_group_id], references: [id])
+  objective_group_id String?
+  description        String
+  members            user[]                  @relation("MemberOfObjective")
+  owners             user[]                  @relation("OwnerOfObjective")
+  theme_group        theme_group             @relation(fields: [theme_group_id], references: [id])
+  theme_group_id     String
+  start_date         DateTime
+  end_date           DateTime
+  status             StatusEnum
+  priority           PriorityEnum
+  progress           Int
+  tags               String[]
+  key_results        key_results[]
+  comments           objective_comments[]
+  attachments        objective_attachments[]
+}
+
+model key_results {
+  id           String                   @id @default(uuid())
+  name         String
+  members      user[]                   @relation("MemberOfKeyresult")
+  owners       user[]                   @relation("OwnerOfKeyresult")
+  objective    objective?               @relation(fields: [objective_id], references: [id])
+  objective_id String
+  description  String
+  start_date   DateTime
+  end_date     DateTime
+  status       StatusEnum
+  priority     PriorityEnum
+  progress     Int
+  tags         String[]
+  projects     project[]
+  comments     key_result_comments[]
+  attachments  key_result_attachments[]
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @default(now()) @map("updated_at")
+}
+
+model objective_comments {
+  id           String     @id @default(uuid())
+  comment      String
+  user         user?      @relation(fields: [user_id], references: [id])
+  user_id      String
+  objective    objective? @relation(fields: [objective_id], references: [id])
+  objective_id String
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @default(now()) @map("updated_at")
+}
+
+model objective_attachments {
+  id           String     @id @default(uuid())
+  url          String
+  objective    objective? @relation(fields: [objective_id], references: [id])
+  objective_id String
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @default(now()) @map("updated_at")
+}
+
+model key_result_comments {
+  id             String       @id @default(uuid())
+  comment        String
+  user           user?        @relation(fields: [user_id], references: [id])
+  user_id        String
+  key_results    key_results? @relation(fields: [key_results_id], references: [id])
+  key_results_id String
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @default(now()) @map("updated_at")
+}
+
+model key_result_attachments {
+  id             String       @id @default(uuid())
+  url            String
+  key_results    key_results? @relation(fields: [key_results_id], references: [id])
+  key_results_id String
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @default(now()) @map("updated_at")
+}

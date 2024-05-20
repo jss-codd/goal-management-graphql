@@ -1,0 +1,97 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: goal-mgmt
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+frameworkVersion: "3"
+
+useDotenv: true
+
+
+custom:
+  stage: ${opt:stage, 'local'}
+  config:
+    local:
+      NODE_ENV: development
+  region: ${env:AWS_REGION}
+  webpack:
+    webpackConfig: './webpack.config.js'
+    includeModules:
+      forceExclude: aws-sdk
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-dotenv-plugin
+  - serverless-offline
+
+
+provider:
+  name: aws
+  region: ${self:custom.region}
+  runtime: nodejs18.x
+  apiGateway:
+    minimumCompressionSize: 1024
+    shouldStartNameWithService: true
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+    NODE_ENV: ${self:custom.config.${self:custom.stage}.NODE_ENV, 'production'}
+    ENV: ${self:custom.stage}
+    REGION: ${self:custom.region}
+  lambdaHashingVersion: '20201221'
+
+functions:
+  graphql:
+    # Make sure your file path is correct!
+    # (e.g., if your file is in the root folder use server.graphqlHandler )
+    # The format is: <FILENAME>.<HANDLER>
+    handler: src/server.graphqlHandler # highlight-line
+    events:
+      - httpApi:
+          path: /
+          method: POST
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      - httpApi:
+          path: /
+          method: GET
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+# Omit the following lines if you aren't using TS!
+
+package:
+  patterns:
+    - "!node_modules/.prisma/client/libquery_engine-*"
+    - "node_modules/.prisma/client/libquery_engine-rhel-*"
+    - "!node_modules/prisma/libquery_engine-*"
+    - "!node_modules/@prisma/engines/**"
